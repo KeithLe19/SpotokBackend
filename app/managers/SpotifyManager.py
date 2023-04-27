@@ -63,6 +63,8 @@ class SpotifyManager:
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None)
         
     def getArtist(self, token, genres, artistList):
+        print("genres: ", genres)
+        print("artistlist: ", artistList)
         try:
             # Use auth token to access spotify
             sp = spotipy.Spotify(auth=token)
@@ -82,7 +84,8 @@ class SpotifyManager:
                     artists += ","
                     strGenres += ","
             return {'artist': artists, 'strGenres' : strGenres}
-        except:
+        except spotipy.exceptions.SpotifyException as err:
+            print(err.msg)
             return None
         
     def getTrackID(self, token, song):
@@ -183,6 +186,33 @@ class SpotifyManager:
             pool = persistence.get_db()
             if pool:
                 user_genres = genre_accessor.get_user_genres(pool, user_id)
+                result = self.openAIManager.getInitialRecommendation(genres=user_genres)
+                gen = []
+                gen.append(user_genres[0][1])
+                art1 = self.getArtist(access_token, gen, result)
+                gen[0] = user_genres[1][1]
+                art2 = self.getArtist(access_token, gen, result)
+                alist = []
+                alist.append(art1['artist'])
+                alist.append(art2['artist'])
+                
+
+                # print("song: ", result['song'])
+                tra = self.getTrackID(access_token, result['song'])
+                # print("track: ", tra)
+                track = []
+                track.append(tra)
+                print("art: ", alist)
+                print("gen: ", gen)
+                print("tra: ", track)
+
+                recommendation = sp.recommendations(alist, gen, track, limit=10)
+
+                return self.messageManager.getMessage(isError=False, 
+                                                          message="Success", 
+                                                          statusCode=200, 
+                                                          data=recommendation["tracks"])
+
                 if user_genres:
                     genres_names = [t[1] for t in user_genres]
                     user_liked_tracks = track_accessor.get_user_favorite_tracks(pool, user_id)
@@ -202,6 +232,9 @@ class SpotifyManager:
                     tracks.append(track_id)
                     artists = []
                     artists.append(track_artist_id)
+                    print("ART: ", artists)
+                    print("GENRE: ", genres_names)
+                    print("TRA: ", tracks)
                     recommendation = sp.recommendations(artists, genres_names, tracks, limit=10)
 
                     return self.messageManager.getMessage(isError=False, 

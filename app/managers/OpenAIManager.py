@@ -18,7 +18,7 @@ class OpenAIManager:
         
     def getInitialRecommendation(self, genres) :
         # Set up prompt
-        prompt = "Give me 1 artist recommendation for the following genres: " + genres[0] + " and " + genres[1] + self.RECOMMENDATIONPROMPT
+        prompt = "Give me 1 artist recommendation for the following genres: " + genres[0][1] + " and " + genres[1][1] + self.RECOMMENDATIONPROMPT
         try:
             response = self.openAIManager.ChatCompletion.create(
                 model="gpt-3.5-turbo",

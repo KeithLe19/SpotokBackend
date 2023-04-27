@@ -17,7 +17,7 @@ class AuthManager:
     def handle_spotify_callback(self, code, linking_url = None):
         result = dict()
         sp_auth = spotipy.oauth2.SpotifyOAuth(scope = self.SCOPE, state=linking_url)
-        token_object = sp_auth.get_access_token(code)
+        token_object = sp_auth.get_access_token(code, check_cache=False)
 
         #Token object is
         """
