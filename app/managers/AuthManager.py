@@ -3,11 +3,14 @@ import spotipy
 from app.entities.UserEntity import User
 from app.accessors import user_accessor
 from app.managers.MessageManager import MessageManager
+from app.managers.LoggerManager import LoggerManager
+
 
 class AuthManager:
     def __init__(self):
         self.SCOPE = "user-read-private, user-read-email, user-library-read, playlist-read-private, playlist-read-collaborative, playlist-modify-private, playlist-modify-public, streaming, app-remote-control, user-top-read"
         self.messageManager = MessageManager()
+        self.loggerManager = LoggerManager()
 
     def get_spotify_authorize_url(self, linking_url = None):
         sp_auth = spotipy.oauth2.SpotifyOAuth(scope = self.SCOPE, state=linking_url, show_dialog=True)
@@ -43,11 +46,13 @@ class AuthManager:
         existing_user = user_accessor.get_user_by_email(current_user["email"])
 
         print(f'{current_user["email"]} is logging in')
+        self.loggerManager.sendEvent('AuthManager-handle_spotify_callback():49', f'{current_user["email"]} is logging in')
 
         # If user email doesn't exist in our database
         # create the user
         if existing_user is None:
             print("creating user")
+            self.loggerManager.sendEvent('AuthManager-handle_spotify_callback():55', 'creating user')
             new_user_object = User(current_user["id"], current_user["email"], current_user["display_name"], current_user["country"], origin="spotify", verified=1)
             user_accessor.insert(new_user_object)
 
@@ -100,6 +105,7 @@ class AuthManager:
             result = sp_auth.refresh_access_token(refresh_token)
             access_token = result["access_token"]
             print(f'server is sending back new token {access_token}')
+            self.loggerManager.sendEvent('AuthManager-refresh_token():108', f'server is sending back new token {access_token}')
             return self.messageManager.getMessage(isError=False, message="User retrieved sucessfully", statusCode=200, data=access_token) 
 
         except spotipy.exceptions.SpotifyException as err:

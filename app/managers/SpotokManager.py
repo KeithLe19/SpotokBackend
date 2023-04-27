@@ -7,6 +7,8 @@ from app.entities.ArtistEntity import Artist
 from app.entities.TrackEntity import Track
 from app.entities.ImageEntity import Image
 from app.managers.MessageManager import MessageManager
+from app.managers.LoggerManager import LoggerManager
+
 from app import persistence
 
 
@@ -14,6 +16,7 @@ from app import persistence
 class SpotokManager:
     def __init__(self):
         self.messageManager = MessageManager()
+        self.loggerManager = LoggerManager()
 
     def get_track_by_id(self, id):
         pool = persistence.get_db()
@@ -34,6 +37,7 @@ class SpotokManager:
                                                     message="Retrieved all genres", 
                                                     statusCode=200, 
                                                     data=genres_list)
+        self.loggerManager.sendEvent('SpotokManager-get_all_genres():34', 'Internal Error')
         return self.messageManager.getMessage(isError=True, message="Internal Error", statusCode=500, data=None) 
 
     def insert_user_genre(self, access_token, genre_ids):
@@ -55,10 +59,13 @@ class SpotokManager:
                                                       message="genres inserted", 
                                                       statusCode=204, 
                                                       data=None)
+            self.loggerManager.sendEvent('SpotokManager-insert_user_genre():62', 'Internal Error')
             return self.messageManager.getMessage(isError=True, message="Internal Error", statusCode=500, data=None) 
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotokManager-insert_user_genre():65', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None) 
         except mariadb.Error:
+            self.loggerManager.sendEvent('SpotokManager-insert_user_genre():68', 'Database Error')
             return self.messageManager.getMessage(isError=True, message="Database error", statusCode=500, data=None) 
 
     def get_user_genres(self, access_token):
@@ -83,10 +90,13 @@ class SpotokManager:
                                                       message="Retrieved all user genres", 
                                                       statusCode=200, 
                                                       data=genres_list)
+            self.loggerManager.sendEvent('SpotokManager-get_user_genres():93', 'Internal Error')
             return self.messageManager.getMessage(isError=True, message="Internal Error", statusCode=500, data=None) 
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotokManager-get_user_genres():96', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None) 
         except mariadb.Error:
+            self.loggerManager.sendEvent('SpotokManager-get_user_genres():99', 'Database Error')
             return self.messageManager.getMessage(isError=True, message="Database error", statusCode=500, data=None) 
 
 
@@ -138,11 +148,13 @@ class SpotokManager:
                                                       message="Successfully added", 
                                                       statusCode=200, 
                                                       data=track_meta_data)
+            self.loggerManager.sendEvent('SpotokManager-add_track_to_user_library():151', 'Internal Error')
             return self.messageManager.getMessage(isError=True, message="Internal Error", statusCode=500, data=None) 
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotokManager-add_track_to_user_library():154', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None) 
-        except mariadb.Error as e:
-            print(e)
+        except mariadb.Error:
+            self.loggerManager.sendEvent('SpotokManager-add_track_to_user_library():157', 'Database Error')
             return self.messageManager.getMessage(isError=True, message="Some error occurred", statusCode=500, data=None) 
 
     def remove_track_from_user_library(self, access_token, track_id):
@@ -162,10 +174,13 @@ class SpotokManager:
                                                       message="Successfully removed", 
                                                       statusCode=204, 
                                                       data=None)
+            self.loggerManager.sendEvent('SpotokManager-remove_track_from_user_library():177', 'Internal Error')
             return self.messageManager.getMessage(isError=True, message="Internal Error", statusCode=500, data=None) 
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotokManager-remove_track_from_user_library():180', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None) 
         except mariadb.Error:
+            self.loggerManager.sendEvent('SpotokManager-remove_track_from_user_library():183', 'Database Error')
             return self.messageManager.getMessage(isError=True, message="Database error", statusCode=500, data=None) 
 
     def get_user_library(self, access_token):
@@ -182,7 +197,6 @@ class SpotokManager:
             if pool:
                 track_ids = track_accessor.get_user_favorite_tracks(pool, user_id)
                 track_list = []
-                print(track_ids)
                 for id_tuple in track_ids:
                     id = id_tuple[0]
                     track_meta_data = self.get_track_meta_data(id)
@@ -191,10 +205,13 @@ class SpotokManager:
                                                       message="Successfully added", 
                                                       statusCode=200, 
                                                       data=track_list)
+            self.loggerManager.sendEvent('SpotokManager-get_user_library():208', 'Internal Error')
             return self.messageManager.getMessage(isError=True, message="Internal Error", statusCode=500, data=None) 
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotokManager-get_user_library():211', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None) 
-        except mariadb.Error as e:
+        except mariadb.Error:
+            self.loggerManager.sendEvent('SpotokManager-get_user_library():214', 'Database Error')
             return self.messageManager.getMessage(isError=True, message="Database error", statusCode=500, data=None) 
 
     def get_track_meta_data(self, track_id):
@@ -205,7 +222,6 @@ class SpotokManager:
         # get artists
         artist_list = []
         artist_ids = artist_accessor.get_arist_ids_by_track_id(pool, track_id)
-        print(artist_ids)
         for id_tuple in artist_ids:
             id = id_tuple[0]
             artist = artist_accessor.get_by_id(pool, id)
@@ -228,7 +244,6 @@ class SpotokManager:
             image_list.append(img_obj)
 
         track_obj = dict()
-        print(track)
 
         track_obj["id"] = track[0]
         track_obj["external_id"] = track[1]

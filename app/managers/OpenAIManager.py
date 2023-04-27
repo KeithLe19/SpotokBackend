@@ -3,7 +3,7 @@ import json
 import os
 from dotenv import load_dotenv
 
-from app.managers.MessageManager import MessageManager
+from app.managers.LoggerManager import LoggerManager
 
 
 class OpenAIManager:
@@ -14,7 +14,7 @@ class OpenAIManager:
         self.RECOMMENDATIONPROMPT = ". Give me 1 song sung by the first recommended artist. Provide the information in the form of a JSON with a genre as a key and the value is the recommended artist. Add the recommended song at the end of the JSON with the key as 'song' and the value as the recommended song."
         
         self.TIMESTAMPPROMPT = " is a JSON where the key is a song and the value are the artists who sang that song. Add a second key-value pair to each song where the key is 'catch' and the value is the time in the song that is the catchiest, memorable, or most replayed. If you don't know the song, set the value to -1. Only return the JSON."
-    
+        self.loggerManager = LoggerManager()
         
     def getInitialRecommendation(self, genres) :
         # Set up prompt
@@ -29,6 +29,7 @@ class OpenAIManager:
             response_json = json.loads(response.choices[0].message.content)
             return response_json
         except:
+            self.loggerManager.sendEvent('OpenAIManager-getInitialRecommendation():32', "Exception")
             return None
         
     def getSongDictGptJson(self, spotifyRecommendations):
@@ -80,4 +81,5 @@ class OpenAIManager:
                 songDict[ct]['catchyTimestamp'] = finJSON[song]['catch']
             return songDict
         except:
+            self.loggerManager.sendEvent('OpenAIManager-getTimeStamps():84', "Exception")
             return None

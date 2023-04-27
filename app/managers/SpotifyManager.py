@@ -6,6 +6,7 @@ from app.accessors import genre_accessor
 from app.accessors import artist_accessor
 from app.managers.MessageManager import MessageManager
 from app.managers.OpenAIManager import OpenAIManager
+from app.managers.LoggerManager import LoggerManager
 
 
 
@@ -13,6 +14,7 @@ class SpotifyManager:
     def __init__(self) -> None:
         self.messageManager = MessageManager()
         self.openAIManager = OpenAIManager()
+        self.loggerManager = LoggerManager()
         
     # Add the given tracks to the users spotify playlist
     def addToPlaylist(self, token, tracks, playlist):
@@ -28,7 +30,8 @@ class SpotifyManager:
             playlistID = playlist["id"]
             
             if playlistID is None:
-                print("Creating a new playlist for user.......") 
+                print("Creating a new playlist for user.......")
+                self.loggerManager.sendEvent('SpotifyManager-addToPlaylist():34', 'Creating a new playlist for user...')
                 # Call to create new playlist
                 newPlaylist = sp.user_playlist_create(user=user_id, 
                                         name=playlist["name"], 
@@ -46,6 +49,7 @@ class SpotifyManager:
                                                   statusCode=200, 
                                                   data=None)
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotifyManager-addToPlaylist():52', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None) 
               
     def getPlaylists(self, token):
@@ -60,11 +64,10 @@ class SpotifyManager:
                                                   statusCode=200, 
                                                   data=playlistsObj)
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotifyManager-getPlaylists():67', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None)
         
     def getArtist(self, token, genres, artistList):
-        print("genres: ", genres)
-        print("artistlist: ", artistList)
         try:
             # Use auth token to access spotify
             sp = spotipy.Spotify(auth=token)
@@ -85,7 +88,7 @@ class SpotifyManager:
                     strGenres += ","
             return {'artist': artists, 'strGenres' : strGenres}
         except spotipy.exceptions.SpotifyException as err:
-            print(err.msg)
+            self.loggerManager.sendEvent('SpotifyManager-getArtist():91', err.msg)
             return None
         
     def getTrackID(self, token, song):
@@ -97,6 +100,7 @@ class SpotifyManager:
             searchResult = sp.search(q=song, limit=1, offset=0, type='track', market='US')
             return searchResult['tracks']['items'][0]['id']
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotifyManager-getTrackID():103', err.msg)
             return None
 
     def getRecommendations(self, token, artists, genres, tracks):
@@ -125,6 +129,7 @@ class SpotifyManager:
    
             return recommendations
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotifyManager-getRecommendations():132', err.msg)
             return None
         
     def getInitialRecommendation(self, token, genres):
@@ -161,6 +166,7 @@ class SpotifyManager:
                                                   statusCode=204, 
                                                   data=None)
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotifyManager-start_track():169', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None) 
 
     def pause_track(self, token, device_id):
@@ -174,6 +180,7 @@ class SpotifyManager:
                                                   statusCode=204, 
                                                   data=None)
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotifyManager-pause_track():183', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None)
 
     def get_recommendations_v2(self, access_token):
@@ -195,16 +202,9 @@ class SpotifyManager:
                 alist = []
                 alist.append(art1['artist'])
                 alist.append(art2['artist'])
-                
-
-                # print("song: ", result['song'])
                 tra = self.getTrackID(access_token, result['song'])
-                # print("track: ", tra)
                 track = []
                 track.append(tra)
-                print("art: ", alist)
-                print("gen: ", gen)
-                print("tra: ", track)
 
                 recommendation = sp.recommendations(alist, gen, track, limit=10)
 
@@ -212,36 +212,8 @@ class SpotifyManager:
                                                           message="Success", 
                                                           statusCode=200, 
                                                           data=recommendation["tracks"])
-
-                if user_genres:
-                    genres_names = [t[1] for t in user_genres]
-                    user_liked_tracks = track_accessor.get_user_favorite_tracks(pool, user_id)
-                    if not user_liked_tracks:
-                        user_top_tracks = sp.current_user_top_tracks(limit=1)
-                        top_track = user_top_tracks["items"][0]
-                        track_id = top_track["id"]
-                        track_artist_id = top_track["artists"][0]["id"]
-                    else:
-                        track_ids = [t[0] for t in user_liked_tracks]
-                        track_id = track_ids[len(track_ids) - 1]
-                        track_artist_ids = artist_accessor.get_arist_ids_by_track_id(pool, track_id) 
-                        track_artist_id = track_artist_ids[0][0]
-                    
-
-                    tracks = []
-                    tracks.append(track_id)
-                    artists = []
-                    artists.append(track_artist_id)
-                    print("ART: ", artists)
-                    print("GENRE: ", genres_names)
-                    print("TRA: ", tracks)
-                    recommendation = sp.recommendations(artists, genres_names, tracks, limit=10)
-
-                    return self.messageManager.getMessage(isError=False, 
-                                                          message="Success", 
-                                                          statusCode=200, 
-                                                          data=recommendation["tracks"])
-
+            self.loggerManager.sendEvent('SpotifyManager-get_recommendations_v2():215', "Internal Error")
             return self.messageManager.getMessage(isError=True, message="Internal Error", statusCode=500, data=None) 
         except spotipy.exceptions.SpotifyException as err:
+            self.loggerManager.sendEvent('SpotifyManager-get_recommendations_v2():218', err.msg)
             return self.messageManager.getMessage(isError=True, message=err.msg, statusCode=err.http_status, data=None)
